@@ -1,0 +1,250 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "API de Suporte Técnico de TI",
+    "description": "API completa para gerenciar suporte técnico",
+    "version": "1.0.0"
+  },
+  "host": "localhost:8080",
+  "basePath": "/",
+  "schemes": ["http", "https"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+  "paths": {
+    "/users": {
+      "get": {
+        "summary": "Lista todos os usuários",
+        "responses": {
+          "200": {
+            "description": "Lista de usuários",
+            "schema": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/User"}
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Cria um novo usuário",
+        "parameters": [{
+          "name": "body",
+          "in": "body",
+          "required": true,
+          "schema": {
+            "type": "object",
+            "properties": {
+              "nome": {"type": "string"},
+              "email": {"type": "string"},
+              "senha": {"type": "string"},
+              "cargo": {"type": "string"},
+              "departamento": {"type": "string"}
+            }
+          }
+        }],
+        "responses": {"201": {"description": "Usuário criado com sucesso"}}
+      }
+    },
+    "/users/{id}": {
+      "put": {
+        "summary": "Atualiza um usuário",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object"}}
+        ],
+        "responses": {"200": {"description": "Usuário atualizado"}}
+      },
+      "delete": {
+        "summary": "Deleta um usuário",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
+        "responses": {"200": {"description": "Usuário deletado"}}
+      }
+    },
+    "/tasks": {
+      "get": {
+        "summary": "Lista todas as tarefas",
+        "responses": {
+          "200": {
+            "description": "Lista de tarefas",
+            "schema": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/Task"}
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Cria uma nova tarefa",
+        "parameters": [{"name": "body", "in": "body", "required": true, "schema": {"type": "object"}}],
+        "responses": {"201": {"description": "Tarefa criada com sucesso"}}
+      }
+    },
+    "/tasks/{id}": {
+      "put": {
+        "summary": "Atualiza uma tarefa",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object"}}
+        ],
+        "responses": {"200": {"description": "Tarefa atualizada"}}
+      },
+      "delete": {
+        "summary": "Deleta uma tarefa",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
+        "responses": {"200": {"description": "Tarefa deletada"}}
+      }
+    },
+    "/equipamentos": {
+      "get": {
+        "summary": "Lista todos os equipamentos",
+        "responses": {
+          "200": {
+            "description": "Lista de equipamentos",
+            "schema": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/Equipamento"}
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Cria um novo equipamento",
+        "parameters": [{"name": "body", "in": "body", "required": true, "schema": {"type": "object"}}],
+        "responses": {"201": {"description": "Equipamento criado com sucesso"}}
+      }
+    },
+    "/equipamentos/{id}": {
+      "put": {
+        "summary": "Atualiza um equipamento",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object"}}
+        ],
+        "responses": {"200": {"description": "Equipamento atualizado"}}
+      },
+      "delete": {
+        "summary": "Deleta um equipamento",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
+        "responses": {"200": {"description": "Equipamento deletado"}}
+      }
+    },
+    "/emprestimos": {
+      "get": {
+        "summary": "Lista todos os empréstimos",
+        "responses": {
+          "200": {
+            "description": "Lista de empréstimos",
+            "schema": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/Emprestimo"}
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Cria um novo empréstimo",
+        "parameters": [{"name": "body", "in": "body", "required": true, "schema": {"type": "object"}}],
+        "responses": {"201": {"description": "Empréstimo criado com sucesso"}}
+      }
+    },
+    "/emprestimos/{id}/devolver": {
+      "put": {
+        "summary": "Marca empréstimo como devolvido",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
+        "responses": {"200": {"description": "Empréstimo devolvido com sucesso"}}
+      }
+    },
+    "/chamados": {
+      "get": {
+        "summary": "Lista todos os chamados",
+        "responses": {
+          "200": {
+            "description": "Lista de chamados",
+            "schema": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/Chamado"}
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Cria um novo chamado",
+        "parameters": [{"name": "body", "in": "body", "required": true, "schema": {"type": "object"}}],
+        "responses": {"201": {"description": "Chamado criado com sucesso"}}
+      }
+    },
+    "/chamados/{id}": {
+      "put": {
+        "summary": "Atualiza um chamado",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "type": "string"},
+          {"name": "body", "in": "body", "schema": {"type": "object"}}
+        ],
+        "responses": {"200": {"description": "Chamado atualizado"}}
+      },
+      "delete": {
+        "summary": "Deleta um chamado",
+        "parameters": [{"name": "id", "in": "path", "required": true, "type": "string"}],
+        "responses": {"200": {"description": "Chamado deletado"}}
+      }
+    }
+  },
+  "definitions": {
+    "User": {
+      "type": "object",
+      "properties": {
+        "_id": {"type": "string"},
+        "nome": {"type": "string"},
+        "email": {"type": "string"},
+        "cargo": {"type": "string"},
+        "departamento": {"type": "string"}
+      }
+    },
+    "Task": {
+      "type": "object",
+      "properties": {
+        "_id": {"type": "string"},
+        "titulo": {"type": "string"},
+        "descricao": {"type": "string"},
+        "prioridade": {"type": "string"},
+        "status": {"type": "string"},
+        "usuarioId": {"type": "string"}
+      }
+    },
+    "Equipamento": {
+      "type": "object",
+      "properties": {
+        "_id": {"type": "string"},
+        "nome": {"type": "string"},
+        "tipo": {"type": "string"},
+        "marca": {"type": "string"},
+        "modelo": {"type": "string"},
+        "numeroSerie": {"type": "string"},
+        "status": {"type": "string"},
+        "localizacao": {"type": "string"}
+      }
+    },
+    "Emprestimo": {
+      "type": "object",
+      "properties": {
+        "_id": {"type": "string"},
+        "equipamentoId": {"type": "string"},
+        "usuarioId": {"type": "string"},
+        "dataDevolucaoPrevista": {"type": "string"},
+        "dataDevolucaoReal": {"type": "string"},
+        "status": {"type": "string"}
+      }
+    },
+    "Chamado": {
+      "type": "object",
+      "properties": {
+        "_id": {"type": "string"},
+        "titulo": {"type": "string"},
+        "descricao": {"type": "string"},
+        "prioridade": {"type": "string"},
+        "status": {"type": "string"},
+        "equipamentoId": {"type": "string"},
+        "usuarioId": {"type": "string"}
+      }
+    }
+  }
+}
