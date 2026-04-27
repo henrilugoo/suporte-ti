@@ -1,0 +1,35 @@
+============================================================
+ELEMENTO EXTRA IMPLEMENTADO: DASHBOARD DE MÉTRICAS EM TEMPO REAL
+============================================================
+
+DESCRIÇÃO:
+O projeto inclui um Dashboard dinâmico integrado ao sistema de chamados. 
+Este painel consolida os dados operacionais mais críticos em uma interface 
+visual de fácil leitura, atualizada em tempo real conforme as interações na API.
+
+LOCALIZAÇÃO:
+- Front-end: Componente Dashboard.jsx (Integrado na página de Chamados).
+- Back-end: Rota dedicada em /dashboard/stats.
+
+BENEFÍCIOS PARA O PROJETO:
+- Visibilidade Operacional: Visão clara de quantos chamados estão abertos, 
+  em atendimento ou resolvidos.
+- Gestão de Ativos: Monitoramento rápido do total de equipamentos cadastrados.
+- Tomada de Decisão: Facilita a identificação de gargalos no suporte técnico 
+  através de indicadores de cores (status).
+- Experiência do Usuário (UX): Interface limpa e moderna com cards intuitivos.
+
+TECNOLOGIAS UTILIZADAS:
+- React (Hooks): Uso de useEffect e useState para busca e estado dos dados.
+- Node.js & Express: Criação de rota agregadora para contagem de documentos.
+- MongoDB: Consultas performáticas (countDocuments) para métricas.
+
+COMO UTILIZAR:
+1. Acesse a tela de "Chamados".
+2. O Dashboard aparecerá automaticamente no topo da página.
+3. Ao criar, editar ou finalizar um chamado, os números do Dashboard 
+   são atualizados automaticamente para refletir o estado atual do banco de dados.
+
+------------------------------------------------------------
+Documentação do Elemento Extra para o Sistema de Gestão de TI.
+============================================================

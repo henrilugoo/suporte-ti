@@ -8,6 +8,7 @@ const taskRoutes = require("./routes/taskRoutes");
 const equipamentoRoutes = require("./routes/equipamentoRoutes");
 const emprestimoRoutes = require("./routes/emprestimoRoutes");
 const chamadoRoutes = require("./routes/chamadoRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 const swaggerUI = require("swagger-ui-express");
 const swaggerDocument = require("./swagger/swagger.json");
 
@@ -33,6 +34,7 @@ app.use("/", taskRoutes);
 app.use("/", equipamentoRoutes);
 app.use("/", emprestimoRoutes);
 app.use("/", chamadoRoutes);
+app.use("/", dashboardRoutes);
 
 app.get('/', (req, res) => {
   res.send('API do Sistema!');

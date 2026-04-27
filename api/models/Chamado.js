@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const chamadoSchema = new mongoose.Schema({
   titulo: { type: String, required: [true, 'Título é obrigatório'] },
+  solicitante: { type: String, required: [true, 'Solicitante é obrigatório'] },
   descricao: { type: String, required: [true, 'Descrição é obrigatória'] },
   prioridade: { type: String, enum: ['Baixa', 'Média', 'Alta', 'Crítica'], default: 'Média' },
   equipamentoId: {

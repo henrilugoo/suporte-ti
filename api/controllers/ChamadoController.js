@@ -3,7 +3,8 @@ const Equipamento = require('../models/Equipamento');
 const User = require('../models/userModel');
 
 const criarChamado = async (req, res) => {
-    const { titulo, descricao, prioridade, equipamentoId, usuarioId } = req.body;
+    // ADICIONADO: solicitante na desestruturação
+    const { titulo, descricao, solicitante, prioridade, equipamentoId, usuarioId } = req.body;
 
     if (!titulo || !descricao || !equipamentoId || !usuarioId) {
         return res.status(400).json({ msg: "Preencha os campos obrigatórios" });
@@ -21,7 +22,12 @@ const criarChamado = async (req, res) => {
         }
 
         const novoChamado = await Chamado.create({
-            titulo, descricao, prioridade, equipamentoId, usuarioId
+            titulo, 
+            descricao, 
+            solicitante, // AGORA O SOLICITANTE É SALVO AQUI
+            prioridade, 
+            equipamentoId, 
+            usuarioId
         });
 
         res.status(201).json({ msg: "Chamado criado com sucesso", chamado: novoChamado });
@@ -44,7 +50,6 @@ const listarChamados = async (req, res) => {
 
 const buscarChamado = async (req, res) => {
     const { id } = req.params;
-
     try {
         const chamado = await Chamado.findById(id)
             .populate('equipamentoId', 'nome tipo marca modelo numeroSerie')
@@ -61,7 +66,8 @@ const buscarChamado = async (req, res) => {
 
 const editarChamado = async (req, res) => {
     const { id } = req.params;
-    const { titulo, descricao, prioridade, status, tempoResolucao } = req.body;
+    // ADICIONADO: solicitante aqui também para permitir editar o nome
+    const { titulo, descricao, solicitante, prioridade, status, tempoResolucao } = req.body;
 
     try {
         const chamado = await Chamado.findById(id);
@@ -71,6 +77,7 @@ const editarChamado = async (req, res) => {
 
         if (titulo) chamado.titulo = titulo;
         if (descricao) chamado.descricao = descricao;
+        if (solicitante) chamado.solicitante = solicitante; // ATUALIZA O SOLICITANTE
         if (prioridade) chamado.prioridade = prioridade;
         if (status) chamado.status = status;
         if (tempoResolucao !== undefined) chamado.tempoResolucao = tempoResolucao;
@@ -84,7 +91,6 @@ const editarChamado = async (req, res) => {
 
 const deletarChamado = async (req, res) => {
     const { id } = req.params;
-
     try {
         const chamado = await Chamado.findByIdAndDelete(id);
         if (!chamado) {

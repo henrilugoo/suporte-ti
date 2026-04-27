@@ -7,11 +7,17 @@ function Emprestimos() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({
-    equipamentoId: '', usuarioId: '', dataDevolucaoPrevista: '', observacoes: ''
-  });
   const [success, setSuccess] = useState('');
+  const [editingId, setEditingId] = useState(null);
 
+  const [form, setForm] = useState({
+    equipamentoId: '', 
+    usuarioId: '', 
+    dataDevolucaoPrevista: '', 
+    observacoes: ''
+  });
+
+  // --- CARREGAMENTO DE DADOS ---
   const loadData = async () => {
     setLoading(true);
     setError('');
@@ -22,6 +28,7 @@ function Emprestimos() {
         fetch(`${API_URL}/users`)
       ]);
       if (!empRes.ok || !equipRes.ok || !userRes.ok) throw new Error('Falha ao carregar dados');
+      
       setEmprestimos(await empRes.json());
       setEquipamentos(await equipRes.json());
       setUsers(await userRes.json());
@@ -32,245 +39,179 @@ function Emprestimos() {
     }
   };
 
-  useEffect(() => {
-    loadData();
+  useEffect(() => { 
+    loadData(); 
   }, []);
 
+  // --- LOGICA DE FORMULÁRIO ---
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
   };
 
+  const prepararEdicao = (emp) => {
+    setEditingId(emp._id);
+    setForm({
+      equipamentoId: emp.equipamentoId?._id || emp.equipamentoId,
+      usuarioId: emp.usuarioId?._id || emp.usuarioId,
+      dataDevolucaoPrevista: emp.dataDevolucaoPrevista ? emp.dataDevolucaoPrevista.slice(0, 16) : '',
+      observacoes: emp.observacoes || ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError('');
+    setError(''); 
     setSuccess('');
+    const method = editingId ? 'PUT' : 'POST';
+    const url = editingId ? `${API_URL}/emprestimos/${editingId}` : `${API_URL}/emprestimos`;
+
     try {
-      const response = await fetch(`${API_URL}/emprestimos`, {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.msg || 'Erro ao registrar empréstimo');
-      }
+      if (!response.ok) throw new Error('Erro ao processar empréstimo');
+
+      setSuccess(editingId ? 'Empréstimo atualizado!' : 'Empréstimo registrado!');
+      setEditingId(null);
       setForm({ equipamentoId: '', usuarioId: '', dataDevolucaoPrevista: '', observacoes: '' });
-      setSuccess('Empréstimo registrado com sucesso!');
       loadData();
-    } catch (err) {
-      setError(err.message);
-    }
+    } catch (err) { setError(err.message); }
   };
 
+  // --- AÇÕES ---
   const devolverEmprestimo = async (id) => {
-    setError('');
-    setSuccess('');
     try {
-      const response = await fetch(`${API_URL}/emprestimos/${id}/devolver`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.msg || 'Erro ao devolver empréstimo');
-      }
-      setSuccess('Empréstimo devolvido com sucesso!');
-      loadData();
-    } catch (err) {
-      setError(err.message);
-    }
+      const res = await fetch(`${API_URL}/emprestimos/${id}/devolver`, { method: 'PUT' });
+      if (res.ok) loadData();
+    } catch (err) { setError(err.message); }
+  };
+
+  const excluirEmprestimo = async (id) => {
+    if (!window.confirm('Excluir este empréstimo?')) return;
+    try {
+      const res = await fetch(`${API_URL}/emprestimos/${id}`, { method: 'DELETE' });
+      if (res.ok) loadData();
+    } catch (err) { setError(err.message); }
   };
 
   const reabrirEmprestimo = async (id) => {
-    setError('');
-    setSuccess('');
     try {
-      const response = await fetch(`${API_URL}/emprestimos/${id}/reabrir`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.msg || 'Erro ao reabrir empréstimo');
-      }
-      setSuccess('Empréstimo reaberto com sucesso!');
-      loadData();
-    } catch (err) {
-      setError(err.message);
-    }
+      const res = await fetch(`${API_URL}/emprestimos/${id}/reabrir`, { method: 'PUT' });
+      if (res.ok) loadData();
+    } catch (err) { setError(err.message); }
   };
 
+  // --- AUXILIARES DE ESTILO ---
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Ativo': return 'rgb(59, 130, 246)';
+      case 'Ativo': return '#3b82f6';
       case 'Devolvido': return '#10b981';
       case 'Atrasado': return '#ef4444';
       default: return '#6b7280';
     }
   };
 
-  const statusBadgeStyle = (backgroundColor) => ({
-    backgroundColor,
-    color: 'white',
-    padding: '6px 12px',
-    borderRadius: '999px',
-    fontSize: '0.75rem',
-    fontWeight: '700',
-    letterSpacing: '0.01em',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  });
-
-  const isAtrasado = (emprestimo) => {
-    if (emprestimo.status !== 'Ativo') return false;
-    const hoje = new Date();
-    const dataPrevista = new Date(emprestimo.dataDevolucaoPrevista);
-    return hoje > dataPrevista;
+  const isAtrasado = (emp) => {
+    if (emp.status !== 'Ativo') return false;
+    return new Date() > new Date(emp.dataDevolucaoPrevista);
   };
 
   return (
     <div className="page-section">
       <h2>Empréstimos de Equipamentos</h2>
-      <p>Controle empréstimos temporários de equipamentos de TI aos usuários.</p>
+      <p style={{ marginBottom: '20px' }}>Controle a saída e devolução de ativos de TI.</p>
 
       <section className="grid-two">
         <div className="panel">
-          <h3>Registrar empréstimo</h3>
+          <h3>{editingId ? 'Editar Empréstimo' : 'Registrar Empréstimo'}</h3>
           <form onSubmit={handleSubmit} className="form-stack">
-            <label>
-              Usuário responsável
+            <label>Usuário responsável
               <select name="usuarioId" value={form.usuarioId} onChange={handleChange} required>
-                <option value="">Selecione o responsável pelo empréstimo</option>
-                {users.map((user) => (
-                  <option key={user._id} value={user._id}>
-                    {user.nome} - {user.cargo || 'Cargo não informado'} ({user.departamento || 'TI'})
-                  </option>
-                ))}
+                <option value="">Selecione...</option>
+                {users.map(u => <option key={u._id} value={u._id}>{u.nome} ({u.departamento})</option>)}
               </select>
             </label>
-            <label>
-              Equipamento disponível
+
+            <label>Equipamento
               <select name="equipamentoId" value={form.equipamentoId} onChange={handleChange} required>
-                <option value="">Selecione o equipamento</option>
-                {equipamentos
-                  .filter(e => e.status === 'Disponível')
-                  .map((equip) => (
-                  <option key={equip._id} value={equip._id}>
-                    {equip.nome} - {equip.tipo} ({equip.numeroSerie})
-                  </option>
+                <option value="">Selecione...</option>
+                {equipamentos.filter(e => e.status === 'Disponível' || e._id === form.equipamentoId).map(e => (
+                  <option key={e._id} value={e._id}>{e.nome} ({e.numeroSerie})</option>
                 ))}
               </select>
             </label>
             
-            <label>
-              Data de devolução prevista
-              <input
-                type="datetime-local"
-                name="dataDevolucaoPrevista"
-                value={form.dataDevolucaoPrevista}
-                onChange={handleChange}
-                min={new Date().toISOString().slice(0, 16)}
-                required
-              />
+            <label>Data de devolução prevista
+              <input type="datetime-local" name="dataDevolucaoPrevista" value={form.dataDevolucaoPrevista} onChange={handleChange} required />
             </label>
-            <label>
-              Observações
-              <textarea
-                name="observacoes"
-                value={form.observacoes}
-                onChange={handleChange}
-                rows="2"
-                placeholder="Motivo do empréstimo, condições do equipamento..."
-              />
+
+            <label>Observações
+              <textarea name="observacoes" value={form.observacoes} onChange={handleChange} rows="2" />
             </label>
-            <button type="submit" className="primary">Registrar empréstimo</button>
+
+            <button type="submit" className="primary">{editingId ? 'Salvar Alterações' : 'Registrar'}</button>
+            {editingId && (
+              <button type="button" className="secondary" onClick={() => { setEditingId(null); setForm({equipamentoId:'', usuarioId:'', dataDevolucaoPrevista:'', observacoes:''})}}>
+                Cancelar
+              </button>
+            )}
             {error && <p className="error">{error}</p>}
             {success && <p className="success">{success}</p>}
           </form>
         </div>
 
         <div className="panel">
-          <h3>Empréstimos ativos</h3>
-          {loading ? (
-            <p>Carregando...</p>
-          ) : error ? (
-            <p className="error">{error}</p>
-          ) : (
-            <>
-              <ul className="list">
-                {emprestimos
-                  .filter(emp => emp.status === 'Ativo')
-                  .map((emp) => {
-                    const atrasado = isAtrasado(emp);
-                    return (
-                      <li key={emp._id} className="list-item">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <strong>{emp.equipamentoId?.nome}</strong>
-                            <p style={{ margin: '4px 0 2px', lineHeight: '1.4' }}>Usuário: {emp.usuarioId?.nome} ({emp.usuarioId?.email})</p>
-                            <small style={{ display: 'block', marginTop: '4px' }}>
-                              Empréstimo: {new Date(emp.dataEmprestimo).toLocaleDateString()} |
-                              Devolução prevista: {new Date(emp.dataDevolucaoPrevista).toLocaleDateString()}
-                            </small>
-                            {emp.observacoes && <small style={{ display: 'block', marginTop: '4px' }}>Obs: {emp.observacoes}</small>}
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                            <span style={statusBadgeStyle(atrasado ? '#ef4444' : getStatusColor(emp.status))}>
-                              {atrasado ? 'ATRASADO' : emp.status}
-                            </span>
-                            {emp.status === 'Ativo' && (
-                              <button
-                                type="button"
-                                className="primary"
-                                style={{ backgroundColor: 'rgb(16, 185, 129)', borderColor: 'rgb(15, 118, 110)', padding: '8px 10px', fontSize: '0.9rem' }}
-                                onClick={() => devolverEmprestimo(emp._id)}
-                              >
-                                Devolver
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-              </ul>
-              <h3 style={{ marginTop: '24px' }}>Empréstimos devolvidos</h3>
-              <ul className="list">
-                
-                {emprestimos
-                  .filter(emp => emp.status === 'Devolvido')
-                  .map((emp) => (
-                    <li key={emp._id} className="list-item">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <strong>{emp.equipamentoId?.nome || 'Equipamento não encontrado'}</strong>
-                          <p style={{ margin: '4px 0 2px', lineHeight: '1.4' }}>Usuário: {emp.usuarioId?.nome || 'Usuário não encontrado'} ({emp.usuarioId?.email || 'Email não informado'})</p>
-                          <small style={{ display: 'block', marginTop: '4px' }}>
-                            Empréstimo: {new Date(emp.dataEmprestimo).toLocaleDateString()} |
-                            Devolução: {emp.dataDevolucaoReal ? new Date(emp.dataDevolucaoReal).toLocaleDateString() : 'Não informada'}
-                          </small>
-                          {emp.observacoes && <small style={{ display: 'block', marginTop: '4px' }}>Obs: {emp.observacoes}</small>}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                          <span style={statusBadgeStyle(getStatusColor(emp.status))}>
-                            {emp.status}
-                          </span>
-                          <button
-                            type="button"
-                            className="secondary small"
-                            style={{ backgroundColor: '#3b82f6', borderColor: '#3b82f6', color: 'white', padding: '8px 12px', fontSize: '0.8rem' }}
-                            onClick={() => reabrirEmprestimo(emp._id)}
-                          >
-                            Reabrir
-                          </button>
-                        </div>
+          <h3>Lista de Empréstimos</h3>
+          {loading ? <p>Carregando...</p> : (
+            <ul className="list">
+              {emprestimos.map((emp) => {
+                const atrasado = isAtrasado(emp);
+                const statusFinal = atrasado ? 'ATRASADO' : emp.status;
+                return (
+                  <li key={emp._id} className="list-item">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                      <div style={{ flex: 1 }}>
+                        <strong>{emp.equipamentoId?.nome}</strong>
+                        <p style={{ fontSize: '0.8rem', margin: '4px 0' }}>Para: {emp.usuarioId?.nome}</p>
+                        <small style={{ color: '#666' }}>Previsto: {new Date(emp.dataDevolucaoPrevista).toLocaleDateString()}</small>
                       </div>
-                    </li>
-                  ))}
-              </ul>
-            </>
+                      
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ 
+                          backgroundColor: atrasado ? '#ef4444' : getStatusColor(emp.status), 
+                          color: 'white', padding: '4px 10px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' 
+                        }}>
+                          {statusFinal}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '12px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {emp.status === 'Ativo' && (
+                        <button onClick={() => devolverEmprestimo(emp._id)} className="primary" style={{ backgroundColor: '#10b981', padding: '6px 12px', fontSize: '0.75rem', borderRadius: '20px' }}>
+                          Devolver
+                        </button>
+                      )}
+                      <button onClick={() => prepararEdicao(emp)} className="primary" style={{ backgroundColor: '#3b82f6', padding: '6px 12px', fontSize: '0.75rem', borderRadius: '20px' }}>
+                        Editar
+                      </button>
+                      <button onClick={() => excluirEmprestimo(emp._id)} className="primary" style={{ backgroundColor: '#ef4444', padding: '6px 12px', fontSize: '0.75rem', borderRadius: '20px' }}>
+                        Excluir
+                      </button>
+                      {emp.status === 'Devolvido' && (
+                        <button onClick={() => reabrirEmprestimo(emp._id)} className="secondary" style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '20px' }}>
+                          Reabrir
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       </section>

@@ -2,14 +2,17 @@ import { useEffect, useState } from 'react';
 import API_URL from '../config';
 
 function Tasks() {
+  // --- ESTADOS (Lógica) ---
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [editingTaskId, setEditingTaskId] = useState(null); // ID da tarefa que está sendo editada
+
   const [form, setForm] = useState({
     titulo: '', descricao: '', prioridade: 'Média', usuarioId: '', prazo: ''
   });
-  const [success, setSuccess] = useState('');
 
   const prioridades = [
     { value: 'Baixa', label: 'Baixa', color: '#10b981' },
@@ -25,11 +28,15 @@ function Tasks() {
     { value: 'Cancelada', label: 'Cancelada', color: '#ef4444' }
   ];
 
+  // --- FUNÇÕES DE API (Lógica) ---
+
   const loadData = async () => {
     setLoading(true);
-    setError('');
     try {
-      const [tasksRes, usersRes] = await Promise.all([fetch(`${API_URL}/tasks`), fetch(`${API_URL}/users`)]);
+      const [tasksRes, usersRes] = await Promise.all([
+        fetch(`${API_URL}/tasks`), 
+        fetch(`${API_URL}/users`)
+      ]);
       if (!tasksRes.ok || !usersRes.ok) throw new Error('Falha ao carregar dados');
       setTasks(await tasksRes.json());
       setUsers(await usersRes.json());
@@ -40,31 +47,46 @@ function Tasks() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Função para carregar dados no formulário para editar
+  const handleEditClick = (task) => {
+    setEditingTaskId(task._id);
+    setForm({
+      titulo: task.titulo,
+      descricao: task.descricao,
+      prioridade: task.prioridade,
+      usuarioId: task.usuarioId?._id || task.usuarioId,
+      prazo: task.prazo ? new Date(task.prazo).toISOString().slice(0, 16) : ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll para o formulário
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setSuccess('');
+    
+    const method = editingTaskId ? 'PUT' : 'POST';
+    const url = editingTaskId ? `${API_URL}/tasks/${editingTaskId}` : `${API_URL}/tasks`;
+
     try {
-      const response = await fetch(`${API_URL}/tasks`, {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.msg || 'Erro ao criar tarefa');
-      }
+
+      if (!response.ok) throw new Error('Erro ao salvar tarefa');
+
+      setSuccess(editingTaskId ? 'Tarefa atualizada!' : 'Tarefa criada!');
+      setEditingTaskId(null);
       setForm({ titulo: '', descricao: '', prioridade: 'Média', usuarioId: '', prazo: '' });
-      setSuccess('Tarefa criada com sucesso!');
       loadData();
     } catch (err) {
       setError(err.message);
@@ -72,262 +94,119 @@ function Tasks() {
   };
 
   const updateTaskStatus = async (id, status) => {
-    setError('');
-    setSuccess('');
     try {
-      const response = await fetch(`${API_URL}/tasks/${id}`, {
+      await fetch(`${API_URL}/tasks/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.msg || 'Erro ao atualizar status');
-      }
-      setSuccess(`Tarefa marcada como ${status.toLowerCase()}!`);
       loadData();
-    } catch (err) {
-      setError(err.message);
-    }
+    } catch (err) { setError(err.message); }
   };
 
-  const getPrioridadeColor = (prioridade) => {
-    const pri = prioridades.find(p => p.value === prioridade);
-    return pri ? pri.color : '#6b7280';
+  const deleteTask = async (id) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+    try {
+      await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' });
+      setSuccess('Tarefa removida!');
+      loadData();
+    } catch (err) { setError(err.message); }
   };
 
-  const getStatusColor = (status) => {
-    const stat = statusTasks.find(s => s.value === status);
-    return stat ? stat.color : '#6b7280';
-  };
-
+  // --- AUXILIARES DE DESIGN ---
+  const getPrioridadeColor = (p) => prioridades.find(item => item.value === p)?.color || '#6b7280';
+  const getStatusColor = (s) => statusTasks.find(item => item.value === s)?.color || '#6b7280';
   const isAtrasada = (task) => {
-    if (task.status === 'Concluída' || task.status === 'Cancelada') return false;
-    if (!task.prazo) return false;
-    const hoje = new Date();
-    const prazo = new Date(task.prazo);
-    return hoje > prazo;
+    if (task.status === 'Concluída' || !task.prazo) return false;
+    return new Date() > new Date(task.prazo);
   };
 
   return (
     <div className="page-section">
       <h2>Tarefas de Suporte TI</h2>
-      <p>Atribua e acompanhe tarefas de manutenção, configuração e suporte técnico.</p>
-
+      <p>Gerencie suas tarefas de suporte técnico aqui.</p>
+      
       <section className="grid-two">
         <div className="panel">
-          <h3>Criar nova tarefa</h3>
+          <h3>{editingTaskId ? 'Editar Tarefa' : 'Criar nova tarefa'}</h3>
           <form onSubmit={handleSubmit} className="form-stack">
-            <label>
-              Título da tarefa
-              <input
-                name="titulo"
-                value={form.titulo}
-                onChange={handleChange}
-                placeholder="Ex: Configurar VPN, Atualizar Windows, Instalar software"
-                required
-              />
+            <label>Título
+              <input name="titulo" value={form.titulo} onChange={handleChange} required />
             </label>
-            <label>
-              Descrição detalhada
-              <textarea
-                name="descricao"
-                value={form.descricao}
-                onChange={handleChange}
-                rows="3"
-                placeholder="Descreva os passos necessários, equipamentos envolvidos, softwares..."
-                required
-              />
+            <label>Descrição
+              <textarea name="descricao" value={form.descricao} onChange={handleChange} rows="3" required />
             </label>
-            <label>
-              Prioridade
+            <label>Prioridade
               <select name="prioridade" value={form.prioridade} onChange={handleChange}>
-                {prioridades.map((pri) => (
-                  <option key={pri.value} value={pri.value}>{pri.label}</option>
-                ))}
+                {prioridades.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
               </select>
             </label>
-            <label>
-              Responsável
+            <label>Responsável
               <select name="usuarioId" value={form.usuarioId} onChange={handleChange} required>
-                <option value="">Selecione o técnico responsável</option>
-                {users
-                  .filter(user => user.cargo && (
-                    user.cargo.includes('Técnico') ||
-                    user.cargo.includes('Analista') ||
-                    user.cargo.includes('Administrador') ||
-                    user.cargo.includes('Coordenador') ||
-                    user.cargo.includes('Gerente')
-                  ))
-                  .map((user) => (
-                  <option key={user._id} value={user._id}>
-                    {user.nome} - {user.cargo} ({user.departamento})
-                  </option>
-                ))}
+                <option value="">Selecione...</option>
+                {users.map(u => <option key={u._id} value={u._id}>{u.nome} ({u.cargo})</option>)}
               </select>
             </label>
-            <label>
-              Prazo para conclusão
-              <input
-                type="datetime-local"
-                name="prazo"
-                value={form.prazo}
-                onChange={handleChange}
-                min={new Date().toISOString().slice(0, 16)}
-              />
+            <label>Prazo
+              <input type="datetime-local" name="prazo" value={form.prazo} onChange={handleChange} />
             </label>
-            <button type="submit" className="primary">Criar tarefa</button>
+            
+            <button type="submit" className="primary">
+              {editingTaskId ? 'Salvar Alterações' : 'Criar Tarefa'}
+            </button>
+            {editingTaskId && (
+              <button type="button" onClick={() => {setEditingTaskId(null); setForm({titulo:'', descricao:'', prioridade:'Média', usuarioId:'', prazo:''})}} className="secondary">Cancelar Edição</button>
+            )}
             {error && <p className="error">{error}</p>}
             {success && <p className="success">{success}</p>}
           </form>
         </div>
 
+        {/* COLUNA DIREITA: LISTAS */}
         <div className="panel">
           <h3>Tarefas ativas</h3>
-          {loading ? (
-            <p>Carregando...</p>
-          ) : error ? (
-            <p className="error">{error}</p>
-          ) : (
-            <>
-            <ul className="list">
-              {tasks
-                .filter(task => task.status !== 'Concluída' && task.status !== 'Cancelada')
-                .map((task) => {
-                  const atrasada = isAtrasada(task);
-                  return (
-                    <li key={task._id} className="list-item">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                        <div style={{ flex: 1 }}>
-                          <strong>{task.titulo}</strong>
-                          <p style={{ margin: '4px 0 2px', lineHeight: '1.4' }}>{task.descricao.length > 60 ? task.descricao.substring(0, 60) + '...' : task.descricao}</p>
-                          <small style={{ display: 'block', marginTop: '4px' }}>Responsável: {task.usuarioId?.nome}</small>
-                          {task.prazo && (
-                            <small style={{ display: 'block', marginTop: '4px' }}>
-                              Prazo: {new Date(task.prazo).toLocaleDateString()} {new Date(task.prazo).toLocaleTimeString()}
-                            </small>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-                          <span
-                            style={{
-                              backgroundColor: getPrioridadeColor(task.prioridade),
-                              color: 'white',
-                              padding: '2px 6px',
-                              borderRadius: '8px',
-                              fontSize: '0.7rem',
-                              fontWeight: '600'
-                            }}
-                          >
-                            {task.prioridade}
-                          </span>
-                          <span
-                            style={{
-                              backgroundColor: atrasada ? '#ef4444' : getStatusColor(task.status),
-                              color: 'white',
-                              padding: '2px 6px',
-                              borderRadius: '8px',
-                              fontSize: '0.7rem',
-                              fontWeight: '600'
-                            }}
-                          >
-                            {atrasada ? 'ATRASADA' : task.status}
-                          </span>
-                        </div>
-                      </div>
-                      <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {task.status !== 'Concluída' && (
-                          <button
-                            type="button"
-                            className="primary"
-                            style={{ padding: '8px 12px', fontSize: '0.9rem' }}
-                            onClick={() => updateTaskStatus(task._id, 'Concluída')}
-                          >
-                            Concluir
-                          </button>
-                        )}
-                        {task.status !== 'Cancelada' && (
-                          <button
-                            type="button"
-                            className="primary"
-                            style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', padding: '8px 12px', fontSize: '0.9rem' }}
-                            onClick={() => updateTaskStatus(task._id, 'Cancelada')}
-                          >
-                            Cancelar
-                          </button>
-                        )}
-                        {task.status !== 'Em Andamento' && task.status !== 'Concluída' && (
-                          <button
-                            type="button"
-                            className="primary"
-                            style={{ backgroundColor: '#3b82f6', borderColor: '#3b82f6', padding: '8px 12px', fontSize: '0.9rem' }}
-                            onClick={() => updateTaskStatus(task._id, 'Em Andamento')}
-                          >
-                            Em andamento
-                          </button>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-            </ul>
-            <h3 style={{ marginTop: '24px' }}>Tarefas concluídas</h3>
-            <ul className="list">
-              {tasks
-                .filter(task => task.status === 'Concluída')
-                .map((task) => (
-                  <li key={task._id} className="list-item">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                      <div style={{ flex: 1 }}>
-                        <strong>{task.titulo}</strong>
-                        <p style={{ margin: '4px 0 2px', lineHeight: '1.4' }}>{task.descricao.length > 60 ? task.descricao.substring(0, 60) + '...' : task.descricao}</p>
-                        <small style={{ display: 'block', marginTop: '4px' }}>Responsável: {task.usuarioId?.nome}</small>
-                        {task.prazo && (
-                          <small style={{ display: 'block', marginTop: '4px' }}>
-                            Prazo: {new Date(task.prazo).toLocaleDateString()} {new Date(task.prazo).toLocaleTimeString()}
-                          </small>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-                        <span
-                          style={{
-                            backgroundColor: getPrioridadeColor(task.prioridade),
-                            color: 'white',
-                            padding: '2px 6px',
-                            borderRadius: '8px',
-                            fontSize: '0.7rem',
-                            fontWeight: '600'
-                          }}
-                        >
-                          {task.prioridade}
-                        </span>
-                        <span
-                          style={{
-                            backgroundColor: getStatusColor(task.status),
-                            color: 'white',
-                            padding: '2px 6px',
-                            borderRadius: '8px',
-                            fontSize: '0.7rem',
-                            fontWeight: '600'
-                          }}
-                        >
-                          {task.status}
-                        </span>
-                        <button
-                          type="button"
-                          className="secondary small"
-                          style={{ backgroundColor: '#3b82f6', color: 'white', padding: '6px 10px', fontSize: '0.8rem' }}
-                          onClick={() => updateTaskStatus(task._id, 'Pendente')}
-                        >
-                          Reabrir
-                        </button>
-                      </div>
+          <ul className="list">
+            {tasks.filter(t => t.status !== 'Concluída' && t.status !== 'Cancelada').map(task => (
+              <li key={task._id} className="list-item">
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div>
+                    <strong>{task.titulo}</strong>
+                    <p style={{ fontSize: '0.85rem', margin: '4px 0' }}>{task.descricao}</p>
+                    <small>Resp: {task.usuarioId?.nome}</small>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ backgroundColor: getPrioridadeColor(task.prioridade), color: 'white', padding: '2px 5px', borderRadius: '4px', fontSize: '10px' }}>{task.prioridade}</span>
+                    <div style={{ marginTop: '4px' }}>
+                       <span style={{ backgroundColor: isAtrasada(task) ? '#ef4444' : getStatusColor(task.status), color: 'white', padding: '2px 5px', borderRadius: '4px', fontSize: '10px' }}>
+                        {isAtrasada(task) ? 'ATRASADA' : task.status}
+                       </span>
                     </div>
-                  </li>
-                ))}
-            </ul>
-            </>
-          )}
+                  </div>
+                </div>
+                
+                <div style={{ marginTop: '10px', display: 'flex', gap: '5px' }}>
+                  <button onClick={() => updateTaskStatus(task._id, 'Concluída')} className="primary" style={{ padding: '4px 8px', fontSize: '0.75rem' }}>Concluir</button>
+                  <button onClick={() => handleEditClick(task)} className="primary" style={{ backgroundColor: '#3b82f6', padding: '4px 8px', fontSize: '0.75rem' }}>Editar</button>
+                  <button onClick={() => deleteTask(task._id)} className="secondary" style={{ backgroundColor: '#ef4444', color: 'white', padding: '4px 8px', fontSize: '0.75rem' }}>Excluir</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <h3 style={{ marginTop: '20px' }}>Tarefas concluídas</h3>
+          <ul className="list">
+            {tasks.filter(t => t.status === 'Concluída').map(task => (
+              <li key={task._id} className="list-item" style={{ opacity: 0.8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{task.titulo}</span>
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    <button onClick={() => updateTaskStatus(task._id, 'Pendente')} className="secondary small">Reabrir</button>
+                    <button onClick={() => deleteTask(task._id)} className="secondary small" style={{ backgroundColor: '#ef4444', color: 'white' }}>Excluir</button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </div>

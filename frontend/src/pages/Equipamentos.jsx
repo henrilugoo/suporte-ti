@@ -5,38 +5,24 @@ function Equipamentos() {
   const [equipamentos, setEquipamentos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [editingId, setEditingId] = useState(null);
+
   const [form, setForm] = useState({
     nome: '', tipo: '', marca: '', modelo: '', numeroSerie: '', localizacao: '', observacoes: ''
   });
-  const [success, setSuccess] = useState('');
 
   const tiposEquipamento = [
-    'Notebook',
-    'Desktop',
-    'Monitor',
-    'Impressora',
-    'Scanner',
-    'Switch de Rede',
-    'Roteador',
-    'Access Point',
-    'Servidor',
-    'Projetor',
-    'Telefone IP',
-    'Webcam',
-    'Mouse',
-    'Teclado',
-    'Headset',
-    'Outro'
+    'Notebook', 'Desktop', 'Monitor', 'Impressora', 'Scanner', 'Switch',
+    'Roteador', 'AP', 'Servidor', 'Projetor', 'Telefone IP', 'Outro'
   ];
 
   const loadEquipamentos = async () => {
     setLoading(true);
-    setError('');
     try {
       const response = await fetch(`${API_URL}/equipamentos`);
       if (!response.ok) throw new Error('Falha ao carregar equipamentos');
-      const data = await response.json();
-      setEquipamentos(data);
+      setEquipamentos(await response.json());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -44,85 +30,61 @@ function Equipamentos() {
     }
   };
 
-  useEffect(() => {
-    loadEquipamentos();
-  }, []);
+  useEffect(() => { loadEquipamentos(); }, []);
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleEditClick = (equip) => {
+    setEditingId(equip._id);
+    setForm({
+      nome: equip.nome,
+      tipo: equip.tipo,
+      marca: equip.marca,
+      modelo: equip.modelo,
+      numeroSerie: equip.numeroSerie,
+      localizacao: equip.localizacao,
+      observacoes: equip.observacoes || ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setError('');
-    setSuccess('');
-    
-    // Validar campos obrigatórios
-    if (!form.nome || !form.tipo || !form.marca || !form.modelo || !form.numeroSerie || !form.localizacao) {
-      setError('Todos os campos obrigatórios devem ser preenchidos');
-      return;
-    }
-    
+    const method = editingId ? 'PUT' : 'POST';
+    const url = editingId ? `${API_URL}/equipamentos/${editingId}` : `${API_URL}/equipamentos`;
+
     try {
-      const response = await fetch(`${API_URL}/equipamentos`, {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.msg || responseData.error || 'Erro ao cadastrar equipamento');
-      }
-      
+      if (!response.ok) throw new Error('Erro ao salvar');
+
+      setSuccess(editingId ? 'Atualizado!' : 'Cadastrado!');
+      setEditingId(null);
       setForm({ nome: '', tipo: '', marca: '', modelo: '', numeroSerie: '', localizacao: '', observacoes: '' });
-      setSuccess('Equipamento cadastrado com sucesso!');
       loadEquipamentos();
-    } catch (err) {
-      console.error('Erro detalhado:', err);
-      setError(err.message);
-    }
+    } catch (err) { setError(err.message); }
   };
 
-  const updateEquipamentoStatus = async (id, status) => {
-    setError('');
-    setSuccess('');
-    try {
-      const response = await fetch(`${API_URL}/equipamentos/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.msg || 'Erro ao atualizar status');
-      }
-      setSuccess(`Status do equipamento atualizado para ${status.toLowerCase()}!`);
-      loadEquipamentos();
-    } catch (err) {
-      setError(err.message);
-    }
+  const updateStatus = async (id, status) => {
+    await fetch(`${API_URL}/equipamentos/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    loadEquipamentos();
   };
 
-  const deletarEquipamento = async (id) => {
-    if (!window.confirm('Deseja realmente excluir este equipamento?')) return;
-    setError('');
-    setSuccess('');
-    try {
-      const response = await fetch(`${API_URL}/equipamentos/${id}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body.msg || 'Erro ao deletar equipamento');
-      }
-      setSuccess('Equipamento deletado com sucesso!');
-      loadEquipamentos();
-    } catch (err) {
-      setError(err.message);
-    }
+  const deleteEquipamento = async (id) => {
+    if (!window.confirm('Excluir este equipamento?')) return;
+    await fetch(`${API_URL}/equipamentos/${id}`, { method: 'DELETE' });
+    loadEquipamentos();
   };
 
   const getStatusColor = (status) => {
@@ -130,155 +92,106 @@ function Equipamentos() {
       case 'Disponível': return '#10b981';
       case 'Emprestado': return '#f59e0b';
       case 'Manutenção': return '#ef4444';
-      case 'Inativo': return '#6b7280';
       default: return '#6b7280';
     }
   };
 
   return (
     <div className="page-section">
-      <h2>Equipamentos de TI</h2>
-      <p>Gerencie o inventário de equipamentos de tecnologia da informação.</p>
-
+      <h2>Inventário de TI</h2>
+      <p>Gerencie os equipamentos de TI da sua organização.</p>
       <section className="grid-two">
         <div className="panel">
-          <h3>Cadastrar equipamento</h3>
+          <h3>{editingId ? 'Editar Equipamento' : 'Novo Equipamento'}</h3>
           <form onSubmit={handleSubmit} className="form-stack">
-            <label>
-              Nome do equipamento
-              <input
-                name="nome"
-                value={form.nome}
-                onChange={handleChange}
-                placeholder="Ex: Notebook Dell Latitude 5490"
-                required
-              />
+            <label>Nome
+              <input name="nome" value={form.nome} onChange={handleChange} required placeholder="Ex: Notebook Dell 01" />
             </label>
-            <label>
-              Tipo
-              <select name="tipo" value={form.tipo} onChange={handleChange} required>
-                <option value="">Selecione o tipo</option>
-                {tiposEquipamento.map((tipo) => (
-                  <option key={tipo} value={tipo}>{tipo}</option>
-                ))}
-              </select>
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <label style={{ flex: 1 }}>Tipo
+                <select name="tipo" value={form.tipo} onChange={handleChange} required>
+                  <option value="">Tipo...</option>
+                  {tiposEquipamento.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label style={{ flex: 1 }}>Série
+                <input name="numeroSerie" value={form.numeroSerie} onChange={handleChange} required placeholder="S/N" />
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input name="marca" value={form.marca} onChange={handleChange} required placeholder="Marca" style={{ flex: 1 }} />
+              <input name="modelo" value={form.modelo} onChange={handleChange} required placeholder="Modelo" style={{ flex: 1 }} />
+            </div>
+
+            <label>Localização
+              <input name="localizacao" value={form.localizacao} onChange={handleChange} required placeholder="Ex: CPD ou Setor Financeiro" />
             </label>
-            <label>
-              Marca
-              <input
-                name="marca"
-                value={form.marca}
-                onChange={handleChange}
-                placeholder="Ex: Dell, HP, Lenovo"
-                required
-              />
-            </label>
-            <label>
-              Modelo
-              <input
-                name="modelo"
-                value={form.modelo}
-                onChange={handleChange}
-                placeholder="Ex: Latitude 5490, ThinkPad X1"
-                required
-              />
-            </label>
-            <label>
-              Número de Série
-              <input
-                name="numeroSerie"
-                value={form.numeroSerie}
-                onChange={handleChange}
-                placeholder="Ex: SN123456789"
-                required
-              />
-            </label>
-            <label>
-              Localização
-              <input
-                name="localizacao"
-                value={form.localizacao}
-                onChange={handleChange}
-                placeholder="Ex: Sala 101, Almoxarifado TI"
-                required
-              />
-            </label>
-            <label>
-              Observações
-              <textarea
-                name="observacoes"
-                value={form.observacoes}
-                onChange={handleChange}
-                rows="2"
-                placeholder="Ex: Processador i5, 8GB RAM, SSD 256GB"
-              />
-            </label>
-            <button type="submit" className="primary">Cadastrar equipamento</button>
-            {error && <p className="error">{error}</p>}
-            {success && <p className="success">{success}</p>}
+
+            <button type="submit" className="primary">
+              {editingId ? 'Salvar Alterações' : 'Cadastrar'}
+            </button>
+            {editingId && (
+              <button type="button" onClick={() => {setEditingId(null); setForm({nome:'', tipo:'', marca:'', modelo:'', numeroSerie:'', localizacao:'', observacoes:''})}} className="secondary">
+                Cancelar Edição
+              </button>
+            )}
+            {success && <p className="success" style={{fontSize: '0.8rem'}}>{success}</p>}
           </form>
         </div>
 
+   
         <div className="panel">
-          <h3>Inventário de equipamentos</h3>
-          {loading ? (
-            <p>Carregando...</p>
-          ) : error ? (
-            <p className="error">{error}</p>
-          ) : (
-            <ul className="list" style={{ maxHeight: '62vh', overflowY: 'auto' }}>
-              {equipamentos.map((equip) => (
-                <li key={equip._id} className="list-item">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <strong>{equip.nome}</strong>
-                      <p style={{ margin: '4px 0 2px', lineHeight: '1.4' }}>{equip.tipo} - {equip.marca} {equip.modelo}</p>
-                      <small style={{ display: 'block', marginTop: '4px' }}>Série: {equip.numeroSerie} | Local: {equip.localizacao}</small>
-                      {equip.observacoes && <small style={{ display: 'block', marginTop: '4px' }}>Obs: {equip.observacoes}</small>}
-                    </div>
-                    <span
-                      style={{
-                        backgroundColor: getStatusColor(equip.status),
-                        color: 'white',
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        fontSize: '0.75rem',
-                        fontWeight: '600'
-                      }}
-                    >
+          <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '5px' }}>Equipamentos Ativos</h3>
+          <ul className="list" style={{ maxHeight: '45vh', overflowY: 'auto', marginBottom: '20px' }}>
+            {equipamentos.filter(e => e.status !== 'Inativo').map(equip => (
+              <li key={equip._id} className="list-item">
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div>
+                    <strong style={{ fontSize: '0.85rem' }}>{equip.nome}</strong>
+                    <p style={{ fontSize: '0.75rem', margin: '2px 0' }}>{equip.marca} {equip.modelo} ({equip.tipo})</p>
+                    <small style={{ opacity: 0.7 }}>S/N: {equip.numeroSerie} | Local: {equip.localizacao}</small>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ backgroundColor: getStatusColor(equip.status), color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>
                       {equip.status}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
-                    <select
-                      value={equip.status}
-                      onChange={(event) => updateEquipamentoStatus(equip._id, event.target.value)}
-                      style={{
-                        flex: '1 1 160px',
-                        minWidth: '180px',
-                        padding: '10px 12px',
-                        borderRadius: '12px',
-                        border: '1px solid #d1d5db'
-                      }}
-                    >
-                      <option value="Disponível">Disponível</option>
-                      <option value="Emprestado">Emprestado</option>
-                      <option value="Manutenção">Manutenção</option>
-                      <option value="Inativo">Inativo</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="primary"
-                      style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', padding: '10px 14px' }}
-                      onClick={() => deletarEquipamento(equip._id)}
-                    >
-                      Excluir
-                    </button>
+                </div>
+                
+                <div style={{ marginTop: '10px', display: 'flex', gap: '5px' }}>
+                  <select 
+                    value={equip.status} 
+                    onChange={(e) => updateStatus(equip._id, e.target.value)}
+                    style={{ padding: '2px 4px', fontSize: '0.7rem', height: '26px' }}
+                  >
+                    <option value="Disponível">Disponível</option>
+                    <option value="Emprestado">Emprestado</option>
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Inativo">Inativo</option>
+                  </select>
+                  <button onClick={() => handleEditClick(equip)} className="primary" style={{ backgroundColor: '#3b82f6', padding: '4px 8px', fontSize: '0.7rem' }}>Editar</button>
+                  <button onClick={() => deleteEquipamento(equip._id)} className="secondary" style={{ backgroundColor: '#ef4444', color: 'white', padding: '4px 8px', fontSize: '0.7rem' }}>Excluir</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '5px', color: '#666' }}>Inativos / Baixa</h3>
+          <ul className="list">
+            {equipamentos.filter(e => e.status === 'Inativo').map(equip => (
+              <li key={equip._id} className="list-item" style={{ opacity: 0.6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem' }}>{equip.nome} ({equip.numeroSerie})</span>
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    <button onClick={() => updateStatus(equip._id, 'Disponível')} className="secondary small" style={{ fontSize: '0.7rem' }}>Reativar</button>
+                    <button onClick={() => deleteEquipamento(equip._id)} className="secondary small" style={{ backgroundColor: '#ef4444', color: 'white', fontSize: '0.7rem' }}>Remover</button>
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
     </div>

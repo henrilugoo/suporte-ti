@@ -152,4 +152,36 @@ const deletarEmprestimo = async (req, res) => {
     }
 };
 
-module.exports = { criarEmprestimo, listarEmprestimos, buscarEmprestimo, devolverEmprestimo, reabrirEmprestimo, deletarEmprestimo };
+// Adiciona esta função ao teu Controller
+const atualizarEmprestimo = async (req, res) => {
+    const { id } = req.params;
+    const { equipamentoId, usuarioId, dataDevolucaoPrevista, observacoes } = req.body;
+
+    try {
+        const emprestimo = await Emprestimo.findById(id);
+        if (!emprestimo) {
+            return res.status(404).json({ msg: "Empréstimo não encontrado" });
+        }
+
+        // Atualizamos os campos permitidos
+        emprestimo.equipamentoId = equipamentoId || emprestimo.equipamentoId;
+        emprestimo.usuarioId = usuarioId || emprestimo.usuarioId;
+        emprestimo.dataDevolucaoPrevista = dataDevolucaoPrevista || emprestimo.dataDevolucaoPrevista;
+        emprestimo.observacoes = observacoes || emprestimo.observacoes;
+
+        await emprestimo.save();
+        res.json({ msg: "Empréstimo atualizado com sucesso", emprestimo });
+    } catch (error) {
+        res.status(500).json({ msg: "Erro ao atualizar empréstimo", error: error.message });
+    }
+};
+
+
+module.exports = { criarEmprestimo, 
+    listarEmprestimos, 
+    buscarEmprestimo, 
+    devolverEmprestimo, 
+    reabrirEmprestimo, 
+    deletarEmprestimo,
+    atualizarEmprestimo 
+};

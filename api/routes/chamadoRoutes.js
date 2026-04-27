@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const { obterEstatisticas } = require("../controllers/DashboardController");
+router.get("/dashboard/stats", obterEstatisticas);
 
 const { criarChamado, listarChamados, buscarChamado, editarChamado, deletarChamado } = require("../controllers/ChamadoController");
 
